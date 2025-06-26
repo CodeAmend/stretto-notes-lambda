@@ -1,73 +1,108 @@
-# 🎹 Stretto Notes - Practice Log Lambda
+Stretto Notes Lambda Monorepo
+This repo contains all AWS Lambda functions for Stretto Notes logging and analysis.
+CI/CD is handled via GitHub Actions, with each Lambda in its own folder and auto-deployed to AWS when its folder changes.
 
-This AWS Lambda function is part of the Stretto Notes project. It receives structured piano practice logs via an HTTP POST request (via API Gateway), and inserts them into the `practice_logs` collection in a MongoDB Atlas database (`stretto_notes_gpt`).
+🗂 Structure
+lambdas/
+  log-to-notion/
+    index.js          # Main Lambda handler (Notion API)
+    blocks.js         # Notion block helpers
+    package.json      # Per-lambda deps
+  log-to-mongo/
+    index.js          # Main Lambda handler (MongoDB API)
+    package.json
+.github/
+  workflows/
+    deploy-log-to-notion.yml
+    deploy-log-to-mongo.yml
+README.md
+.env                  # Local dev only (never commit)
 
----
+🚀 How Deployment Works
+Each Lambda folder has its own GitHub Actions workflow.
 
-## 🚀 Purpose
+When you push code to (for example) lambdas/log-to-notion/, only the Notion Lambda is rebuilt and deployed to AWS.
 
-This Lambda is designed to:
+All AWS credentials are managed via GitHub repo secrets (see CI/CD & Secrets Setup).
 
-- Accept a well-structured practice log as JSON via HTTP `POST`
-- Validate the presence of required fields
-- Insert the record directly into the MongoDB `practice_logs` collection
-- Return a response confirming the insertion
+📝 API Schema: Log to Notion Lambda
+POST /strettoNotes-logEntry
+Sample payload:
 
----
-
-## 🔗 API Endpoint
-
-```http
-POST https://<api-id>.execute-api.us-east-1.amazonaws.com/default/strettoNotes-logEntry
-
-
-Replace `<your-api-id>` with your actual API Gateway ID.
-
----
-
-## 📥 JSON Payload Specification
-
-### ✅ Minimum Required Fields
-
-The following top-level fields are **required**:
-
-| Field             | Type     | Required | Description                              |
-|------------------|----------|----------|------------------------------------------|
-| `date`           | `string` | ✅       | Practice date (ISO 8601: `YYYY-MM-DD`)   |
-| `piece`          | `string` | ✅       | Title or name of the piece practiced     |
-| `piece_id`       | `string` | ✅       | A short ID or slug for the piece         |
-| `duration_minutes` | `integer` | ✅     | Total time spent in minutes              |
-| `entries`        | `array`  | ✅       | One or more log entries with detail      |
-
-Each `entry` object must include at minimum:
-
-| Field             | Type     | Required | Description                              |
-|------------------|----------|----------|------------------------------------------|
-| `content`        | `string` | ✅       | Freeform notes about the practice        |
-
----
-
-### 🧩 Full Schema Example
-
-```json
+```ts
 {
-  "date": "2025-06-25",
-  "piece": "Prelude in C Major",
-  "composer": "J.S. Bach",
-  "piece_id": "bwv846",
-  "duration_minutes": 30,
+  "noteId": "UUID",
+  "timestamp": "2025-07-03T13:15:00Z",
+  "date": "2025-07-03",
+  "time": "13:15",
+  "title": "Nocturne in E-flat Major", // Notion Title property
+  "composer": "Chopin",
+  "piece_id": "nocturne_op9_no2",
+  "duration_minutes": 50,
+  "style": "Nocturne",
+  "status": "Learning",
+  "keys": ["E-flat Major"],
+  "Time Signature": ["4/4"],
   "entries": [
     {
       "focus": {
-        "measures": "m.1–4",
+        "section": "Main Theme",
+        "measures": "m.1–16",
         "page": "1",
-        "section": "Intro",
-        "book": "Well-Tempered Clavier I"
+        "book": "Henle Edition"
       },
-      "content": "Worked on voicing and even tempo.",
-      "tags": ["tempo", "touch"],
-      "teacher_questions": ["How should I approach the left hand voicing?"]
+      "content": "Worked on voicing the melody over the accompaniment...",
+      "tags": ["voicing", "pedal", "accompaniment", "touch"],
+      "teacher_questions": [
+        "What’s the best finger substitution for measure 5?",
+        "Should I use pedal in bars 9–10 as written?"
+      ]
     }
   ]
 }
+```
 
+Behavior:
+
+If piece_id exists in the Notion rep DB, notes are appended to that page.
+
+If not, a new rep DB row is created with proper defaults (see below), then notes are appended.
+
+Defaults for new Notion rows:
+
+Title: from note.title or piece_id
+
+piece_id: from note.piece_id
+
+Composer: from note.composer (if select property)
+
+Style, Keys, Time Signature, Status: from matching fields if present
+
+All required status fields (e.g., Teacher (Vivid), Memorization, Control, Expression) are set to safe defaults (Needs Work, Unfamiliar, etc.)
+
+📝 API Schema: Log to Mongo Lambda
+POST /strettoNotes-logEntry
+Sample payload (same or similar as above):
+
+```ts
+{
+  "noteId": "UUID",
+  "timestamp": "2025-07-03T13:15:00Z",
+  "date": "2025-07-03",
+  "time": "13:15",
+  "title": "Nocturne in E-flat Major",
+  "composer": "Chopin",
+  "piece_id": "nocturne_op9_no2",
+  "duration_minutes": 50,
+  "entries": [
+    {
+      "focus": { ... },
+      "content": "Worked on voicing...",
+      "tags": ["voicing", "pedal"],
+      "teacher_questions": [ ... ]
+    }
+  ]
+}
+```
+
+Any additional columns used by Notion can also be stored in Mongo for future reporting or lookup.
