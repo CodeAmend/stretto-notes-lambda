@@ -1,4 +1,4 @@
-import { handler } from './index.mjs';
+import { handler } from '../index.mjs';
 
 export const testNote = {
   date: "2025-06-25",
