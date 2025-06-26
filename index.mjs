@@ -7,49 +7,96 @@ const COLLECTION_NAME = 'practice_logs';
 let cachedClient = null;
 
 async function getMongoClient() {
-  if (cachedClient) return cachedClient;
-  if (!MONGODB_URI) throw new Error('Missing MONGODB_URI env variable');
-  console.log('Connecting to MongoDB');
-  const client = new MongoClient(MONGODB_URI);
-  console.log('MongoDB client object', client);
+  if (cachedClient) {
+    console.log('[Mongo] Reusing cached client');
+    return cachedClient;
+  }
 
-   await client.connect();
-  console.log('Client connection attempt finished');
+  if (!MONGODB_URI) {
+    console.error('[Mongo] MONGODB_URI is not set');
+    throw new Error('Missing MONGODB_URI env variable');
+  }
+
+  console.log('[Mongo] Creating new MongoClient');
+  const client = new MongoClient(MONGODB_URI);
+
+  console.log('[Mongo] Attempting to connect...');
+  await client.connect();
+  console.log('[Mongo] Connected successfully');
+
   cachedClient = client;
   return client;
 }
 
-export const handler = async (event) => {
-  console.log('Lambda function invoked')
-  console.log('Received event:', JSON.stringify(event, null, 2));
-  console.log('MONGODB_URI:', MONGODB_URI ? '[set]' : '[NOT SET]');
+export async function handler(event) {
+  console.log('Received event:', event);
+
+  let notes;
+  try {
+    const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+    notes = Array.isArray(body) ? body : [body];
+  } catch (err) {
+    console.error('Failed to parse request body:', err);
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Invalid JSON in request body' }),
+    };
+  }
+
+  if (!notes.length) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'No notes provided' }),
+    };
+  }
+
+  const missingNoteIds = notes.filter(note => !note.noteId);
+  if (missingNoteIds.length > 0) {
+    console.warn(`Rejected request due to ${missingNoteIds.length} note(s) missing noteId`);
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        error: 'All notes must include a noteId',
+        missingNoteIdCount: missingNoteIds.length,
+      }),
+    };
+  }
 
   try {
-    if (!event.body) {
-      throw new Error('Missing event.body');
-    }
-    const body = JSON.parse(event.body);
-    console.log('Parsed body:', JSON.stringify(body, null, 2));
-
     const client = await getMongoClient();
-    console.log('Mongo client acquired');
     const db = client.db(DB_NAME);
     const collection = db.collection(COLLECTION_NAME);
-    console.log('DB and collection ready');
 
-    const result = await collection.insertOne(body);
-    console.log('Insert result:', result);
+    const results = [];
+
+    for (const note of notes) {
+      const result = await collection.updateOne(
+        { noteId: note.noteId },
+        { $set: note },
+        { upsert: true }
+      );
+
+      results.push({
+        noteId: note.noteId,
+        matched: result.matchedCount,
+        upserted: result.upsertedCount,
+      });
+    }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: 'Practice note saved', insertedId: result.insertedId }),
+      body: JSON.stringify({ message: 'Notes processed', results }),
     };
   } catch (err) {
-    console.error('Error inserting note:', err.stack || err);
+    console.error('Error during MongoDB operation:', err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to insert practice log', details: err.message }),
+      body: JSON.stringify({
+        error: 'Internal server error',
+        detail: err.message || 'Unknown error',
+        stack: err.stack || null
+      }),
     };
   }
-};
+}
 
