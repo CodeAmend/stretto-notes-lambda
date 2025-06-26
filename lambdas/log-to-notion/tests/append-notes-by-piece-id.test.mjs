@@ -1,24 +1,41 @@
 import { handler } from '../index.mjs';
 
 export const testNote = {
-  date: "2025-06-25",
-  piece: "Prelude in C Major",
-  composer: "J.S. Bach",
-  piece_id: "test_piece_id_for_upsert",
-  duration_minutes: 30,
+  date: "2025-07-03",
+  title: "Nocturne in E-flat Major",
+  composer: "Chopin",
+  piece_id: "nocturne_op9_no2",
+  duration_minutes: 50,
+  style: "Nocturne",           // Style select
+  status: "Learning",          // Status select
+  keys: ["E-flat Major"],      // Keys multi-select
+  "Time Signature": ["4/4"],   // Time Signature multi-select
   entries: [
     {
       focus: {
-        measures: "m.1–4",
+        section: "Main Theme",
+        measures: "m.1–16",
         page: "1",
-        section: "Intro",
-        book: "Well-Tempered Clavier I"
+        book: "Henle Edition"
       },
-      content: "Had some issues with how to use the pedal while phrasing and so many other things to. its crazy how this is just crazy",
-      tags: ["tempo", "touch", "piano", "hat", "cat"],
+      content: "Worked on voicing the melody over the accompaniment. Tried practicing with extra slow hands-separate. LH needs to be lighter. Pedaling was improved.",
+      tags: ["voicing", "pedal", "accompaniment", "touch"],
       teacher_questions: [
-        "When adding the pedal here, when is the correct time to back off?",
-        "What is the best method for rubato here?"
+        "What’s the best finger substitution for measure 5?",
+        "Should I use pedal in bars 9–10 as written?"
+      ]
+    },
+    {
+      focus: {
+        section: "Middle Section",
+        measures: "m.17–32",
+        page: "2",
+        book: "Henle Edition"
+      },
+      content: "Tempo was inconsistent, especially in the LH arpeggios. Consider using metronome for next session.",
+      tags: ["tempo", "left hand"],
+      teacher_questions: [
+        "Advice for smoother arpeggios?",
       ]
     }
   ]
