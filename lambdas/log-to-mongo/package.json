@@ -1,5 +1,5 @@
 {
-  "name": "stretto-notes-lambda",
+  "name": "log-to-mongo",
   "version": "1.0.0",
   "description": "A lambda for handling API Gateway for Stretto Notes GPT.",
   "main": "index.mjs",
