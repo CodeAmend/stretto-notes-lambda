@@ -29,18 +29,6 @@ export function dateToggleBlock(date, children) {
   };
 }
 
-// Toggle for a single note/session (children are entry blocks)
-export function noteSectionBlock(label, children) {
-  return {
-    object: 'block',
-    type: 'toggle',
-    toggle: {
-      rich_text: [{ type: 'text', text: { content: label } }],
-      children
-    }
-  };
-}
-
 // Leaf blocks
 export function tagBlock(tags) {
   if (!tags || !tags.length) return null;
@@ -64,35 +52,62 @@ export function tagBlock(tags) {
 
 export function focusBlock(entry) {
   if (!entry.focus || !Object.values(entry.focus).some(Boolean)) return null;
-  const focusParts = [
-    entry.focus.section,
-    entry.focus.measures,
-    entry.focus.page && `page ${entry.focus.page}`,
-    entry.focus.book
-  ].filter(Boolean);
+
+  // Compose each part for rich_text, marking 'measures' bold
+  const richText = [
+    { type: 'text', text: { content: "Focus: " } }, // Label
+
+    // Section (if present)
+    ...(entry.focus.section ? [
+      { type: 'text', text: { content: entry.focus.section + ', ' } }
+    ] : []),
+
+    // Measures (if present, bold)
+    ...(entry.focus.measures ? [
+      { type: 'text', text: { content: entry.focus.measures }, annotations: { bold: true } }
+    ] : []),
+
+    // Add a comma and space if both measures and another part follow
+    ...(entry.focus.measures && (entry.focus.page || entry.focus.book) ? [
+      { type: 'text', text: { content: ', ' } }
+    ] : []),
+
+    // Page (if present)
+    ...(entry.focus.page ? [
+      { type: 'text', text: { content: `page ${entry.focus.page}` } }
+    ] : []),
+
+    // Add a comma and space if both page and book follow
+    ...(entry.focus.page && entry.focus.book ? [
+      { type: 'text', text: { content: ', ' } }
+    ] : []),
+
+    // Book (if present)
+    ...(entry.focus.book ? [
+      { type: 'text', text: { content: entry.focus.book } }
+    ] : [])
+  ];
+
   return {
     object: 'block',
     type: 'callout',
     callout: {
-      icon: { type: "emoji", emoji: "🎯" },
-      rich_text: [
-        { type: 'text', text: { content: "Focus: " + focusParts.join(', ') } }
-      ],
-      color: 'blue_background'
+      rich_text: richText,
+      color: 'default'
     }
   };
 }
 
+
 export function notesContentBlock(content) {
   return {
     object: 'block',
-    type: 'callout',
-    callout: {
-      icon: { type: "emoji", emoji: "💡" },
+    type: 'paragraph',
+    paragraph: {
       rich_text: [
         { type: 'text', text: { content } }
       ],
-      color: 'yellow_background'
+      color: 'gray_background'
     }
   };
 }

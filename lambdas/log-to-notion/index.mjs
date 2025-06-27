@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import { getMongoClient } from './mongo-client.js';
+import { formatTimeTo12hr } from './util.js';
 import { Client } from '@notionhq/client';
 import {
   dateToggleBlock,
-  noteSectionBlock,
   tagBlock,
   focusBlock,
   notesContentBlock,
@@ -48,7 +48,18 @@ export async function handler(event) {
   }
 
   // 2. Build new note section blocks
-  const noteSectionBlocks = notes.map(note => {
+  const noteSectionBlocks = notes.flatMap(note => {
+    // Paragraph or callout block for the session time header
+    const sessionHeader = {
+      object: 'block',
+      type: 'paragraph',
+      paragraph: {
+        rich_text: [
+          { type: 'text', text: { content: `📝 Session${note.time ? ` — ${formatTimeTo12hr(note.time)}` : ""}` } }
+        ]
+      }
+    };
+
     const entryBlocks = (note.entries || []).flatMap(entry => [
       tagBlock(entry.tags),
       focusBlock(entry),
@@ -57,11 +68,11 @@ export async function handler(event) {
       ...questionsBullets(entry.teacher_questions),
       spacerBlock()
     ].filter(Boolean));
-    return noteSectionBlock(
-      `📝 Note${note.time ? ` — ${note.time}` : ""}`,
-      entryBlocks
-    );
+
+    // Return session header, then all entry blocks (flattened)
+    return [sessionHeader, ...entryBlocks];
   });
+
 
   // 3. Find rep page in Notion by piece_id
   let page;
