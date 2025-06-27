@@ -9,18 +9,15 @@ import {
   notesContentBlock,
   questionsLabelBlock,
   questionsBullets,
-  spacerBlock,
+  spacerBlock
 } from './blocks.js';
 
-const NOTION_API_KEY = process.env.NOTION_API_KEY;
+const notion = new Client({ auth: process.env.NOTION_API_KEY });
 const REPERTOIRE_DB_ID = process.env.REPERTOIRE_DB_ID;
 const DB_NAME = 'stretto_notes_gpt';
 const COLLECTION_NAME = 'practice_logs';
 
-const notion = new Client({ auth: NOTION_API_KEY });
-
 export async function handler(event) {
-  // 1. Parse event for date and piece_id
   let { date, piece_id } = typeof event.body === 'string'
     ? JSON.parse(event.body)
     : event.body;
@@ -32,11 +29,10 @@ export async function handler(event) {
     };
   }
 
-  // 2. Aggregate all notes for this date + piece
+  // 1. Aggregate all notes for this date + piece
   let notes = [];
-  let client;
   try {
-    client = await getMongoClient();
+    const client = await getMongoClient();
     const db = client.db(DB_NAME);
     const collection = db.collection(COLLECTION_NAME);
     const agg = await collection.aggregate([
@@ -45,15 +41,14 @@ export async function handler(event) {
     ]).toArray();
     notes = agg.map(g => g.note);
   } catch (err) {
-    console.error('Mongo aggregation error:', err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: 'MongoDB aggregation failed', detail: err.message }),
     };
   }
 
-  // 3. Build Notion blocks for all notes (in handler!)
-  const noteSections = notes.map(note => {
+  // 2. Build new note section blocks
+  const noteSectionBlocks = notes.map(note => {
     const entryBlocks = (note.entries || []).flatMap(entry => [
       tagBlock(entry.tags),
       focusBlock(entry),
@@ -67,9 +62,8 @@ export async function handler(event) {
       entryBlocks
     );
   });
-  const dateBlock = dateToggleBlock(date, noteSections);
 
-  // 4. Find rep page in Notion by piece_id
+  // 3. Find rep page in Notion by piece_id
   let page;
   try {
     const dbRes = await notion.databases.query({
@@ -79,18 +73,17 @@ export async function handler(event) {
     page = dbRes.results[0];
     if (!page) throw new Error("No Notion rep page found");
   } catch (err) {
-    console.error('Notion page query error:', err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: 'Failed to find rep page in Notion', detail: err.message }),
     };
   }
 
-  // 5. Find Practice Log heading and all top-level blocks
-  let topBlocks = [];
+  // 4. Fetch all top-level blocks in the page
+  let pageBlocks = [];
   try {
     const children = await notion.blocks.children.list({ block_id: page.id, page_size: 100 });
-    topBlocks = children.results;
+    pageBlocks = children.results;
   } catch (err) {
     return {
       statusCode: 500,
@@ -98,46 +91,87 @@ export async function handler(event) {
     };
   }
 
-  // Find Practice Log heading
-  const logHeading = topBlocks.find(
+  // 5. Find Practice Log heading
+  const logHeadingIndex = pageBlocks.findIndex(
     b => b.type.startsWith('heading') && b[b.type].rich_text[0]?.plain_text?.includes('Practice Log')
   );
-  if (!logHeading) {
+  if (logHeadingIndex === -1) {
     return {
       statusCode: 400,
       body: JSON.stringify({ error: 'No Practice Log heading found in Notion page.' }),
     };
   }
 
-  // Find and delete existing toggle for this date (if any)
-  const dateToggle = topBlocks.find(
-    b => b.type === 'toggle' &&
-         b.toggle.rich_text[0]?.plain_text?.trim() === date
+  // 6. Find existing date toggle (sibling, not child)
+  const dateToggleBlockObj = pageBlocks.find(
+    b => b.type === 'toggle' && b.toggle.rich_text[0]?.plain_text?.trim() === date
   );
-  if (dateToggle) {
+  let dateToggleId = dateToggleBlockObj?.id;
+
+  if (dateToggleId) {
+    // a. Delete all children of the existing date toggle
     try {
-      await notion.blocks.delete({ block_id: dateToggle.id });
+      const oldChildren = await notion.blocks.children.list({ block_id: dateToggleId, page_size: 100 });
+      for (const child of oldChildren.results) {
+        await notion.blocks.delete({ block_id: child.id });
+      }
+      // b. Append new note sections to the existing toggle
+      if (noteSectionBlocks.length > 0) {
+        await notion.blocks.children.append({
+          block_id: dateToggleId,
+          children: noteSectionBlocks
+        });
+      }
     } catch (err) {
-      console.warn(`Failed to delete old toggle for date ${date}:`, err.message);
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: 'Failed to update existing date toggle', detail: err.message }),
+      };
+    }
+  } else {
+    // Create a new toggle for this date and append
+    try {
+      const appendRes = await notion.blocks.children.append({
+        block_id: page.id,
+        children: [dateToggleBlock(date, noteSectionBlocks)]
+      });
+      dateToggleId = appendRes.results[0]?.id;
+    } catch (err) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: 'Failed to append new date toggle', detail: err.message }),
+      };
     }
   }
 
-  // 6. Append new date toggle block under Practice Log
+  // 7. Reorder so the date toggle is immediately after Practice Log heading
   try {
-    await notion.blocks.children.append({
-      block_id: logHeading.id,
-      children: [dateBlock]
-    });
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: 'Date toggle updated/created in Notion.' }),
-    };
+    const updatedChildren = await notion.blocks.children.list({ block_id: page.id, page_size: 100 });
+    const blockIds = updatedChildren.results.map(b => b.id);
+
+    // Find the current index of Practice Log heading and the date toggle
+    const headingIdx = blockIds.indexOf(pageBlocks[logHeadingIndex].id);
+    const dateToggleIdx = blockIds.indexOf(dateToggleId);
+
+    if (headingIdx !== -1 && dateToggleIdx !== -1) {
+      // Remove date toggle from its current position
+      const reordered = blockIds.filter(id => id !== dateToggleId);
+      // Insert date toggle right after the Practice Log heading
+      reordered.splice(headingIdx + 1, 0, dateToggleId);
+
+      await notion.blocks.children.update({
+        block_id: page.id,
+        children: reordered.map(id => ({ id }))
+      });
+    }
   } catch (err) {
-    console.error('Failed to append new date toggle:', err);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to append date toggle', detail: err.message }),
-    };
+    // Not fatal
+    console.warn('[Notion] Failed to reorder blocks:', err.message);
   }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ message: 'Date toggle updated/created in Notion.' }),
+  };
 }
 

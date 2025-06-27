@@ -1,5 +1,7 @@
 // blocks.js
 
+
+
 // Practice Log heading block
 export function practiceLogHeadingBlock() {
   return {
@@ -22,7 +24,7 @@ export function dateToggleBlock(date, children) {
     type: 'toggle',
     toggle: {
       rich_text: [{ type: 'text', text: { content: date } }],
-      children // already-built noteSectionBlocks
+      children 
     }
   };
 }
@@ -34,13 +36,12 @@ export function noteSectionBlock(label, children) {
     type: 'toggle',
     toggle: {
       rich_text: [{ type: 'text', text: { content: label } }],
-      children // array of leaf blocks
+      children
     }
   };
 }
 
 // Leaf blocks
-
 export function tagBlock(tags) {
   if (!tags || !tags.length) return null;
   const richText = [
