@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { getMongoClient } from '../shared/mongo-client.js';
+import { getMongoClient } from './mongo-client.js';
 import { Client } from '@notionhq/client';
 import {
   dateToggleBlock,
