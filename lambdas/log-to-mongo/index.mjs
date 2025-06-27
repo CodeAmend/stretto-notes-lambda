@@ -1,5 +1,8 @@
 import { MongoClient } from 'mongodb';
 
+const NOTION_URI = process.env.STRETTO_NOTION_URI;
+const NOTION_API_KEY = process.env.STRETTO_NOTION_API_KEY;
+
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = 'stretto_notes_gpt';
 const COLLECTION_NAME = 'practice_logs';
@@ -7,94 +10,113 @@ const COLLECTION_NAME = 'practice_logs';
 let cachedClient = null;
 
 async function getMongoClient() {
-  if (cachedClient) {
-    console.log('[Mongo] Reusing cached client');
-    return cachedClient;
-  }
-
-  if (!MONGODB_URI) {
-    console.error('[Mongo] MONGODB_URI is not set');
-    throw new Error('Missing MONGODB_URI env variable');
-  }
-
-  console.log('[Mongo] Creating new MongoClient');
+  if (cachedClient) return cachedClient;
+  if (!MONGODB_URI) throw new Error('Missing MONGODB_URI env variable');
   const client = new MongoClient(MONGODB_URI);
-
-  console.log('[Mongo] Attempting to connect...');
   await client.connect();
-  console.log('[Mongo] Connected successfully');
-
   cachedClient = client;
   return client;
 }
 
 export async function handler(event) {
-  console.log('Received event:', event);
-
-  let notes;
+  let note;
   try {
-    const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-    notes = Array.isArray(body) ? body : [body];
+    note = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
   } catch (err) {
-    console.error('Failed to parse request body:', err);
     return {
       statusCode: 400,
       body: JSON.stringify({ error: 'Invalid JSON in request body' }),
     };
   }
 
-  if (!notes.length) {
+  if (!note.noteId) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: 'No notes provided' }),
+      body: JSON.stringify({ error: 'All notes must include a noteId' }),
     };
   }
 
-  const missingNoteIds = notes.filter(note => !note.noteId);
-  if (missingNoteIds.length > 0) {
-    console.warn(`Rejected request due to ${missingNoteIds.length} note(s) missing noteId`);
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        error: 'All notes must include a noteId',
-        missingNoteIdCount: missingNoteIds.length,
-      }),
-    };
-  }
-
+  // ---- MONGO WRITE ----
+  let results;
   try {
     const client = await getMongoClient();
     const db = client.db(DB_NAME);
     const collection = db.collection(COLLECTION_NAME);
 
-    const results = [];
+    const noteResponse = await collection.updateOne(
+      { noteId: note.noteId },
+      { $set: note },
+      { upsert: true }
+    );
 
-    for (const note of notes) {
-      const result = await collection.updateOne(
-        { noteId: note.noteId },
-        { $set: note },
-        { upsert: true }
-      );
-
-      results.push({
-        noteId: note.noteId,
-        matched: result.matchedCount,
-        upserted: result.upsertedCount,
-      });
-    }
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: 'Notes processed', results }),
+    results = {
+      noteId: note.noteId,
+      matched: noteResponse.matchedCount,
+      upserted: noteResponse.upsertedCount,
     };
   } catch (err) {
-    console.error('Error during MongoDB operation:', err);
+    // Mongo failure: fail and return immediately!
     return {
       statusCode: 500,
       body: JSON.stringify({
-        error: 'Internal server error',
+        error: 'MongoDB operation failed',
         detail: err.message || 'Unknown error',
         stack: err.stack || null
+      }),
+    };
+  }
+
+  // ---- NOTION WEBHOOK ----
+  if (NOTION_URI) {
+    try {
+      const fetchRes = await fetch(NOTION_URI, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(NOTION_API_KEY ? { 'x-api-key': NOTION_API_KEY } : {})
+        },
+        body: JSON.stringify(note),
+      });
+
+      const fetchText = await fetchRes.text();
+      if (!fetchRes.ok) {
+        return {
+          statusCode: 202,
+          body: JSON.stringify({
+            message: 'Note processed in Mongo, but Notion webhook failed',
+            mongo: results,
+            notionStatus: fetchRes.status,
+            notionResponse: fetchText
+          }),
+        };
+      }
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          message: 'Note processed and sent to Notion',
+          mongo: results,
+          notionStatus: fetchRes.status
+        }),
+      };
+
+    } catch (webhookErr) {
+      return {
+        statusCode: 202,
+        body: JSON.stringify({
+          message: 'Note processed in Mongo, but Notion webhook errored',
+          mongo: results,
+          webhookError: webhookErr.message || webhookErr
+        }),
+      };
+    }
+  } else {
+    // No NOTION_URI configured: success, but Notion not called
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: 'Note processed in Mongo, but Notion webhook not configured (no STRETTO_NOTION_URI or API key)',
+        mongo: results
       }),
     };
   }
