@@ -120,40 +120,29 @@ export async function handler(event) {
   let dateToggleId = dateToggleBlockObj?.id;
 
   if (dateToggleId) {
-    // a. Delete all children of the existing date toggle
+    // Delete the entire date toggle and all its children in one API call
     try {
-      const oldChildren = await notion.blocks.children.list({ block_id: dateToggleId, page_size: 100 });
-      for (const child of oldChildren.results) {
-        await notion.blocks.delete({ block_id: child.id });
-      }
-      // b. Append new note sections to the existing toggle
-      if (noteSectionBlocks.length > 0) {
-        await notion.blocks.children.append({
-          block_id: dateToggleId,
-          children: noteSectionBlocks
-        });
-      }
+      await notion.blocks.delete({ block_id: dateToggleId });
     } catch (err) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: 'Failed to update existing date toggle', detail: err.message }),
-      };
-    }
-  } else {
-    // Create a new toggle for this date and append
-    try {
-      const appendRes = await notion.blocks.children.append({
-        block_id: page.id,
-        children: [dateToggleBlock(date, noteSectionBlocks)]
-      });
-      dateToggleId = appendRes.results[0]?.id;
-    } catch (err) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: 'Failed to append new date toggle', detail: err.message }),
-      };
+      console.warn(`[Notion] Failed to delete old toggle for date ${date}:`, err.message);
+      // Not fatal, continue to create a new one
     }
   }
+
+  // Always append a new toggle for this date and notes
+  try {
+    const appendRes = await notion.blocks.children.append({
+      block_id: page.id,
+      children: [dateToggleBlock(date, noteSectionBlocks)]
+    });
+    dateToggleId = appendRes.results[0]?.id;
+  } catch (err) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Failed to append new date toggle', detail: err.message }),
+    };
+  }
+
 
   // 7. Reorder so the date toggle is immediately after Practice Log heading
   try {
