@@ -1,7 +1,6 @@
 import { MongoClient } from 'mongodb';
 
 const NOTION_URI = process.env.STRETTO_NOTION_URI;
-const NOTION_API_KEY = process.env.STRETTO_NOTION_API_KEY;
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = 'stretto_notes_gpt';
@@ -73,7 +72,6 @@ export async function handler(event) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(NOTION_API_KEY ? { 'x-api-key': NOTION_API_KEY } : {})
         },
         body: JSON.stringify(note),
       });
@@ -90,6 +88,7 @@ export async function handler(event) {
           }),
         };
       }
+
 
       return {
         statusCode: 200,
