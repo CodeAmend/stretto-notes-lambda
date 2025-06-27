@@ -73,7 +73,6 @@ export async function handler(event) {
     return [sessionHeader, ...entryBlocks];
   });
 
-
   // 3. Find rep page in Notion by piece_id
   let page;
   try {
@@ -90,52 +89,35 @@ export async function handler(event) {
     };
   }
 
-  // 4. Fetch all top-level blocks in the page
-  let pageBlocks = [];
+  // 4. Find existing date toggle (sibling at page level)
+  let dateToggleId;
   try {
-    const children = await notion.blocks.children.list({ block_id: page.id, page_size: 100 });
-    pageBlocks = children.results;
-  } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to fetch page children', detail: err.message }),
-    };
-  }
+    const pageBlocks = (await notion.blocks.children.list({ block_id: page.id, page_size: 100 })).results;
+    const dateToggleBlockObj = pageBlocks.find(
+      b => b.type === 'toggle' && b.toggle.rich_text[0]?.plain_text?.trim() === date
+    );
+    dateToggleId = dateToggleBlockObj?.id;
 
-  // 5. Find Practice Log heading
-  const logHeadingIndex = pageBlocks.findIndex(
-    b => b.type.startsWith('heading') && b[b.type].rich_text[0]?.plain_text?.includes('Practice Log')
-  );
-  if (logHeadingIndex === -1) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: 'No Practice Log heading found in Notion page.' }),
-    };
-  }
-
-  // 6. Find existing date toggle (sibling, not child)
-  const dateToggleBlockObj = pageBlocks.find(
-    b => b.type === 'toggle' && b.toggle.rich_text[0]?.plain_text?.trim() === date
-  );
-  let dateToggleId = dateToggleBlockObj?.id;
-
-  if (dateToggleId) {
-    // Delete the entire date toggle and all its children in one API call
-    try {
-      await notion.blocks.delete({ block_id: dateToggleId });
-    } catch (err) {
-      console.warn(`[Notion] Failed to delete old toggle for date ${date}:`, err.message);
-      // Not fatal, continue to create a new one
+    if (dateToggleId) {
+      // Delete the entire date toggle and all its children in one API call
+      try {
+        await notion.blocks.delete({ block_id: dateToggleId });
+      } catch (err) {
+        console.warn(`[Notion] Failed to delete old toggle for date ${date}:`, err.message);
+        // Not fatal, continue to create a new one
+      }
     }
+  } catch (err) {
+    // Not fatal
+    console.warn('[Notion] Failed to check for existing date toggle:', err.message);
   }
 
-  // Always append a new toggle for this date and notes
+  // 5. Always append a new toggle for this date and notes (at page bottom)
   try {
-    const appendRes = await notion.blocks.children.append({
+    await notion.blocks.children.append({
       block_id: page.id,
       children: [dateToggleBlock(date, noteSectionBlocks)]
     });
-    dateToggleId = appendRes.results[0]?.id;
   } catch (err) {
     return {
       statusCode: 500,
@@ -143,35 +125,9 @@ export async function handler(event) {
     };
   }
 
-
-  // 7. Reorder so the date toggle is immediately after Practice Log heading
-  try {
-    const updatedChildren = await notion.blocks.children.list({ block_id: page.id, page_size: 100 });
-    const blockIds = updatedChildren.results.map(b => b.id);
-
-    // Find the current index of Practice Log heading and the date toggle
-    const headingIdx = blockIds.indexOf(pageBlocks[logHeadingIndex].id);
-    const dateToggleIdx = blockIds.indexOf(dateToggleId);
-
-    if (headingIdx !== -1 && dateToggleIdx !== -1) {
-      // Remove date toggle from its current position
-      const reordered = blockIds.filter(id => id !== dateToggleId);
-      // Insert date toggle right after the Practice Log heading
-      reordered.splice(headingIdx + 1, 0, dateToggleId);
-
-      await notion.blocks.children.update({
-        block_id: page.id,
-        children: reordered.map(id => ({ id }))
-      });
-    }
-  } catch (err) {
-    // Not fatal
-    console.warn('[Notion] Failed to reorder blocks:', err.message);
-  }
-
   return {
     statusCode: 200,
-    body: JSON.stringify({ message: 'Date toggle updated/created in Notion.' }),
+    body: JSON.stringify({ message: 'Date toggle updated/created at bottom of Notion page.' }),
   };
 }
 
