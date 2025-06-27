@@ -1,12 +1,13 @@
+// blocks.js
 
-// Title block (session heading)
-export function titleBlock(text) {
+// Practice Log heading block
+export function practiceLogHeadingBlock() {
   return {
     object: 'block',
     type: 'heading_2',
     heading_2: {
       rich_text: [
-        { type: 'text', text: { content: text } }
+        { type: 'text', text: { content: '🎹 Practice Log' } }
       ],
       is_toggleable: false,
       color: 'default'
@@ -14,7 +15,32 @@ export function titleBlock(text) {
   };
 }
 
-// Tags row (emoji, bold+underline, dot separator)
+// Toggle block for a date (children are noteSections)
+export function dateToggleBlock(date, children) {
+  return {
+    object: 'block',
+    type: 'toggle',
+    toggle: {
+      rich_text: [{ type: 'text', text: { content: date } }],
+      children // already-built noteSectionBlocks
+    }
+  };
+}
+
+// Toggle for a single note/session (children are entry blocks)
+export function noteSectionBlock(label, children) {
+  return {
+    object: 'block',
+    type: 'toggle',
+    toggle: {
+      rich_text: [{ type: 'text', text: { content: label } }],
+      children // array of leaf blocks
+    }
+  };
+}
+
+// Leaf blocks
+
 export function tagBlock(tags) {
   if (!tags || !tags.length) return null;
   const richText = [
@@ -35,7 +61,6 @@ export function tagBlock(tags) {
   };
 }
 
-// Focus callout (blue)
 export function focusBlock(entry) {
   if (!entry.focus || !Object.values(entry.focus).some(Boolean)) return null;
   const focusParts = [
@@ -57,20 +82,6 @@ export function focusBlock(entry) {
   };
 }
 
-// Notes label (paragraph)
-export function notesLabelBlock() {
-  return {
-    object: 'block',
-    type: 'paragraph',
-    paragraph: {
-      rich_text: [
-        { type: "text", text: { content: "📌 Notes:" } }
-      ]
-    }
-  };
-}
-
-// Notes content (yellow callout with lightbulb icon)
 export function notesContentBlock(content) {
   return {
     object: 'block',
@@ -85,7 +96,6 @@ export function notesContentBlock(content) {
   };
 }
 
-// Teacher questions label (paragraph)
 export function questionsLabelBlock() {
   return {
     object: 'block',
@@ -98,7 +108,6 @@ export function questionsLabelBlock() {
   };
 }
 
-// Teacher questions as bullet list
 export function questionsBullets(questions) {
   return (questions || []).map(q => ({
     object: 'block',
@@ -109,7 +118,6 @@ export function questionsBullets(questions) {
   }));
 }
 
-// Spacer for separation
 export function spacerBlock() {
   return {
     object: 'block',
@@ -117,6 +125,4 @@ export function spacerBlock() {
     paragraph: { rich_text: [] }
   };
 }
-
-// Build all blocks for a single practice entry
 
