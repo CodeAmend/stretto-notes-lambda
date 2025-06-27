@@ -2,7 +2,7 @@
 
 export function buildRepProperties(note) {
   const properties = {
-    Name: {
+    Title: {
       title: [
         { text: { content: note.title || note.piece_id || "Untitled" } }
       ]
