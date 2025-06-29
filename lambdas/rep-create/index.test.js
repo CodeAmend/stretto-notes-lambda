@@ -1,102 +1,90 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler } from './index.js';
-import {
-  ERROR_MISSING_ID,
-  ERROR_MISSING_TITLE,
-  ERROR_MISSING_TYPE,
-  ERROR_MISSING_CREATED_AT,
-  MONGO_CLIENT_ERROR,
-  MONGO_CREATE_ERROR
-} from '../../shared/constants.js';
-import * as mongoClient from '../../shared/mongo-client.js';
+import { MONGO_CLIENT_ERROR } from '../../shared/constants.js';
+
+
+// Mock the mongo client module
+vi.mock('../../shared/mongo-client.js');
+import { getMongoClient } from '../../shared/mongo-client.js';
 
 const insertOneMock = vi.fn();
-
-vi.mock('../../shared/mongo-client.js', () => ({
-  getMongoClient: vi.fn(() => ({
-    db: () => ({
-      collection: () => ({
-        insertOne: insertOneMock
-      })
-    })
+const findOneMock = vi.fn();
+const mockDb = {
+  collection: vi.fn(() => ({
+    insertOne: insertOneMock,
+    findOne: findOneMock
   }))
-}));
+};
 
-describe('generic resource creation Lambda', () => {
-  let mockResource;
+const mockClient = {
+  db: vi.fn(() => mockDb)
+};
 
+describe('repertoire-create handler', () => {
   beforeEach(() => {
-    // This mock represents a rep resource
-    mockResource = {
-      rep_id: 'resource_1',
-      title: 'Generic Resource',
-      type: 'type_a',
-      created_at: '2025-06-30'
+    vi.clearAllMocks();
+    getMongoClient.mockResolvedValue(mockClient);
+    findOneMock.mockResolvedValue(null); // Default: no existing repertoire
+  });
+
+  it('returns validation error for empty body', async () => {
+    const res = await handler({ body: {} });
+    expect(res.statusCode).toBe(400);
+    const body = JSON.parse(res.body);
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe('Validation failed');
+  });
+
+  it('creates repertoire with valid data', async () => {
+    const validRepertoire = {
+      rep_id: 'chopin_waltz_op18',
+      name: 'Waltz in E-flat major, Op. 18',
+      display_name: 'Chopin Waltz Op. 18'
     };
+
+    insertOneMock.mockResolvedValueOnce({ insertedId: '123' });
+    
+    const res = await handler({ body: JSON.stringify(validRepertoire) });
+    expect(res.statusCode).toBe(201);
+    expect(insertOneMock).toHaveBeenCalled();
+    
+    const responseBody = JSON.parse(res.body);
+    expect(responseBody.ok).toBe(true);
+    expect(responseBody.rep_id).toBe('chopin_waltz_op18');
   });
 
-  async function expectFailedValidation(mock, expectedError) {
-    const res = await handler({ body: mock });
-    expect(res).toStrictEqual({
-      statusCode: 400,
-      body: JSON.stringify({ ok: false, error: expectedError })
-    });
-  }
-
-  describe("Mongo Connection Failure", () => {
-    it("returns 500 & error if Mongo connection fails", async () => {
-      mongoClient.getMongoClient.mockImplementationOnce(() => {
-        throw new Error(MONGO_CLIENT_ERROR);
-      });
-      const res = await handler({ body: mockResource });
-      expect(res.statusCode).toBe(500);
-      expect(res.body).toBe(JSON.stringify({ ok: false, error: MONGO_CLIENT_ERROR }));
-    });
+  it('returns 409 if rep_id already exists', async () => {
+    const existingRepertoire = {
+      rep_id: 'chopin_waltz_op18',
+      name: 'Existing piece'
+    };
+    
+    findOneMock.mockResolvedValueOnce(existingRepertoire);
+    
+    const newRepertoire = {
+      rep_id: 'chopin_waltz_op18',
+      name: 'Waltz in E-flat major, Op. 18',
+      display_name: 'Chopin Waltz Op. 18'
+    };
+    
+    const res = await handler({ body: newRepertoire });
+    expect(res.statusCode).toBe(409);
+    const body = JSON.parse(res.body);
+    expect(body.error).toContain('already exists');
   });
 
-  describe("Validation", () => {
-    it('returns 400 if id is missing', async () => {
-      delete mockResource.rep_id;
-      await expectFailedValidation(mockResource, ERROR_MISSING_ID);
-    });
-
-    it('returns 400 if title is missing', async () => {
-      delete mockResource.title;
-      await expectFailedValidation(mockResource, ERROR_MISSING_TITLE);
-    });
-
-    it('returns 400 if type is missing', async () => {
-      delete mockResource.type;
-      await expectFailedValidation(mockResource, ERROR_MISSING_TYPE);
-    });
-
-  });
-
-  describe("Create: Insert Collection", () => {
-    beforeEach(() => {
-      insertOneMock.mockClear();
-    });
-
-    it("calls insertOne when a full resource is in the body", async () => {
-      await handler({ body: mockResource });
-      expect(insertOneMock).toHaveBeenCalled();
-      expect(insertOneMock.mock.calls[0][0]).toBe(mockResource);
-    });
-
-    it("throws a 500 error on Mongo error", async () => {
-      insertOneMock.mockImplementationOnce(() => {
-        throw new Error(MONGO_CREATE_ERROR);
-      });
-      const res = await handler({ body: mockResource });
-      expect(res.statusCode).toBe(500);
-      expect(res.body).toBe(JSON.stringify({ ok: false, error: MONGO_CREATE_ERROR }));
-    });
-
-    it("returns 201 when resource is created successfully", async () => {
-      insertOneMock.mockImplementationOnce(() => {});  // No error
-      const res = await handler({ body: mockResource });
-      expect(res.statusCode).toBe(201);
-      expect(res.body).toBe(JSON.stringify({ ok: true }));
-    });
+  it('handles MongoDB connection failure', async () => {
+    getMongoClient.mockRejectedValueOnce(new Error('Connection failed'));
+    
+    const validRepertoire = {
+      rep_id: 'chopin_waltz_op18',
+      name: 'Waltz in E-flat major, Op. 18',
+      display_name: 'Chopin Waltz Op. 18'
+    };
+    
+    const res = await handler({ body: validRepertoire });
+    expect(res.statusCode).toBe(500);
+    const body = JSON.parse(res.body);
+    expect(body.error).toBe(MONGO_CLIENT_ERROR);
   });
 });

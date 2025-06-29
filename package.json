@@ -9,11 +9,12 @@
     "build:note-create": "npx esbuild lambdas/note-create/index.js --bundle --platform=node --target=node22 --outdir=lambdas/note-create/dist"
   },
   "dependencies": {
+    "joi": "^17.13.3",
     "mongodb": "^6.17.0"
   },
   "devDependencies": {
-    "esbuild": "^0.21.0",
     "dotenv": "^17.0.0",
+    "esbuild": "^0.21.0",
     "vitest": "^3.2.4"
   },
   "engines": {
@@ -32,4 +33,3 @@
   "author": "Michael Bruce Allen",
   "license": "ISC"
 }
-

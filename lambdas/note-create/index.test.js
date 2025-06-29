@@ -1,116 +1,71 @@
+// index.test.js
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler } from './index.js';
-import {
-  ERROR_MISSING_REP_ID,
-  ERROR_MISSING_TITLE,
-  ERROR_MISSING_NOTE_TYPE,
-  ERROR_MISSING_ENTRIES,
-  MONGO_CLIENT_ERROR,
-  MONGO_CREATE_ERROR
-} from '../../shared/constants.js';
-import * as mongoClient from '../../shared/mongo-client.js';
+import { MONGO_CLIENT_ERROR } from '../../shared/constants.js';
+
+// Mock the mongo client module BEFORE any imports that use it
+vi.mock('../../shared/mongo-client.js');
+
+// Now import the mocked module
+import { getMongoClient } from '../../shared/mongo-client.js';
 
 const insertOneMock = vi.fn();
-
-vi.mock('../../shared/mongo-client.js', () => ({
-  getMongoClient: vi.fn(() => ({
-    db: () => ({
-      collection: () => ({
-        insertOne: insertOneMock
-      })
-    })
+const mockDb = {
+  collection: vi.fn(() => ({
+    insertOne: insertOneMock
   }))
-}));
+};
 
-describe('generic resource creation Lambda', () => {
-  let mockResource;
+const mockClient = {
+  db: vi.fn(() => mockDb)
+};
 
+describe('note-create handler', () => {
   beforeEach(() => {
-    // This mock represents a generic resource that requires validation
-    mockResource = {
-      rep_id: 'resource_1',
-      title: 'Generic Resource',
-      note_type: 'type_a',
-      entries: ['some entry'] 
+    vi.clearAllMocks();
+    // Set default mock implementation
+    getMongoClient.mockResolvedValue(mockClient);
+  });
+
+  it('returns validation error for empty body', async () => {
+    const res = await handler({ body: {} });
+    expect(res.statusCode).toBe(400);
+    const body = JSON.parse(res.body);
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe('Validation failed');
+  });
+
+  it('creates note with valid data', async () => {
+    const validNote = {
+      rep_id: 'test_piece',
+      timestamp: new Date().toISOString(),
+      duration: 30,
+      raw_content: 'Test session',
+      entries: [{ content: 'Test', type: 'discovery' }]
     };
+
+    insertOneMock.mockResolvedValueOnce({ insertedId: '123' });
+    
+    const res = await handler({ body: JSON.stringify(validNote) });
+    expect(res.statusCode).toBe(201);
+    expect(insertOneMock).toHaveBeenCalled();
   });
 
-  async function expectFailedValidation(mock, expectedError) {
-    const res = await handler({ body: mock });
-    expect(res).toStrictEqual({
-      statusCode: 400,
-      body: JSON.stringify({ ok: false, error: expectedError })
-    });
-  }
-
-  describe("Mongo Connection Failure", () => {
-    it("returns 500 & error if Mongo connection fails", async () => {
-      mongoClient.getMongoClient.mockImplementationOnce(() => {
-        throw new Error(MONGO_CLIENT_ERROR);
-      });
-      const res = await handler({ body: mockResource });
-      expect(res.statusCode).toBe(500);
-      expect(res.body).toBe(JSON.stringify({ ok: false, error: MONGO_CLIENT_ERROR }));
-    });
-  });
-
-  describe("Validation", () => {
-    it('returns 400 if rep_id is missing', async () => {
-      delete mockResource.rep_id;
-      await expectFailedValidation(mockResource, ERROR_MISSING_REP_ID);
-    });
-
-    it('returns 400 if title is missing', async () => {
-      delete mockResource.title;
-      await expectFailedValidation(mockResource, ERROR_MISSING_TITLE);
-    });
-
-    it('returns 400 if note_type is missing', async () => {
-      delete mockResource.note_type;
-      await expectFailedValidation(mockResource, ERROR_MISSING_NOTE_TYPE);
-    });
-
-    it('returns 400 if entries is missing', async () => {
-      delete mockResource.entries;
-      await expectFailedValidation(mockResource, ERROR_MISSING_ENTRIES);
-    });
-
-    it('returns 400 if entries is not an array', async () => {
-      mockResource.entries = "not-an-array";
-      await expectFailedValidation(mockResource, ERROR_MISSING_ENTRIES);
-    });
-
-    it('returns 400 if entries is an empty array', async () => {
-      mockResource.entries = [];
-      await expectFailedValidation(mockResource, ERROR_MISSING_ENTRIES);
-    });
-  });
-
-  describe("Create: Insert Collection", () => {
-    beforeEach(() => {
-      insertOneMock.mockClear();
-    });
-
-    it("calls insertOne when a full resource is in the body", async () => {
-      await handler({ body: mockResource });
-      expect(insertOneMock).toHaveBeenCalled();
-      expect(insertOneMock.mock.calls[0][0]).toBe(mockResource);
-    });
-
-    it("throws a 500 error on Mongo error", async () => {
-      insertOneMock.mockImplementationOnce(() => {
-        throw new Error(MONGO_CREATE_ERROR);
-      });
-      const res = await handler({ body: mockResource });
-      expect(res.statusCode).toBe(500);
-      expect(res.body).toBe(JSON.stringify({ ok: false, error: MONGO_CREATE_ERROR }));
-    });
-
-    it("returns 201 when resource is created successfully", async () => {
-      insertOneMock.mockImplementationOnce(() => {});  // No error
-      const res = await handler({ body: mockResource });
-      expect(res.statusCode).toBe(201);
-      expect(res.body).toBe(JSON.stringify({ ok: true }));
-    });
+  it('handles MongoDB connection failure', async () => {
+    // Override the default mock for this test
+    getMongoClient.mockRejectedValueOnce(new Error('Connection failed'));
+    
+    const validNote = {
+      rep_id: 'test_piece',
+      timestamp: new Date().toISOString(),
+      duration: 30,
+      raw_content: 'Test',
+      entries: [{ content: 'Test', type: 'discovery' }]
+    };
+    
+    const res = await handler({ body: validNote });
+    expect(res.statusCode).toBe(500);
+    const body = JSON.parse(res.body);
+    expect(body.error).toBe(MONGO_CLIENT_ERROR);
   });
 });

@@ -1,6 +1,5 @@
 // MongoDB Configuration
-export const DB_NAME = 'generic_database';
-export const COLLECTION_NAME = 'generic_collection';
+export const DB_NAME = 'stretto_notes_gpt_test';
 export const NOTE_COLLECTION_NAME = 'notes';
 export const REP_COLLECTION_NAME = 'reps';
 
