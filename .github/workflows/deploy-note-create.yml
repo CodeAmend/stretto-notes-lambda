@@ -19,29 +19,21 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install prod dependencies (in lambda dir)
+      - name: Install prod dependencies (in root)
         run: |
-          cd lambdas/note-create
           rm -rf node_modules package-lock.json
           npm install --omit=dev
 
       - name: Install esbuild bundler
         run: npm install --no-save esbuild
 
-      - name: Bundle Lambda with esbuild
-        run: |
-          cd lambdas/note-create
-          npx esbuild index.js \
-            --bundle \
-            --platform=node \
-            --target=node22 \
-            --outdir=dist \
-            --external:mongodb
+      - name: Build note-create Lambda
+        run: npm run build:note-create
 
-      - name: Copy node_modules to dist
+      - name: Copy mongodb module (external dep) from root to dist
         run: |
-          cd lambdas/note-create
-          cp -r node_modules dist/
+          mkdir -p lambdas/note-create/dist/node_modules
+          cp -r node_modules/mongodb lambdas/note-create/dist/node_modules/
 
       - name: Zip Lambda bundle
         run: |
