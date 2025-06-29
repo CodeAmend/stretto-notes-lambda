@@ -6,7 +6,6 @@ on:
       - 'lambdas/note-create/**'
       - 'shared/**'
       - '.github/workflows/deploy-note-create.yml'
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -24,13 +23,10 @@ jobs:
           rm -rf node_modules package-lock.json
           npm install --omit=dev
 
-      - name: Install esbuild bundler
-        run: npm install --no-save esbuild
-
       - name: Build note-create Lambda
         run: npm run build:note-create
 
-      - name: Install external production dependencies into dist
+      - name: Install mongodb (external) into dist
         run: |
           cd lambdas/note-create/dist
           npm init -y
