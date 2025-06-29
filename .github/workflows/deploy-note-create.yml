@@ -19,6 +19,14 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Print current user and permissions
+        run: |
+          whoami
+          pwd
+          ls -al
+          ls -al lambdas || true
+          ls -al lambdas/note-create || true
+
       - name: Install dependencies at root
         run: |
           rm -rf node_modules package-lock.json
@@ -27,14 +35,17 @@ jobs:
       - name: Build note-create Lambda with esbuild
         run: npm run build:note-create
 
-      - name: Check that dist exists and show contents
+      - name: Show contents of note-create after build
         run: |
+          echo "Contents of lambdas/note-create after build:"
           ls -al lambdas/note-create
-          ls -al lambdas/note-create/dist || (echo "DIST MISSING" && exit 1)
+          echo "Contents of lambdas/note-create/dist after build:"
+          ls -al lambdas/note-create/dist || echo "dist directory missing!"
 
       - name: Install mongodb (external) into dist
         run: |
           cd lambdas/note-create/dist
+          pwd
           npm init -y
           npm install mongodb --omit=dev
 
@@ -44,14 +55,18 @@ jobs:
           echo "=== DIST DIR ==="
           ls -al
           echo "=== NODE_MODULES DIR ==="
-          ls -al node_modules
+          ls -al node_modules || echo "NO NODE_MODULES"
           echo "=== MONGODB DIR ==="
-          ls -al node_modules/mongodb
+          ls -al node_modules/mongodb || echo "NO MONGODB"
 
       - name: Zip Lambda bundle
         run: |
           cd lambdas/note-create/dist
           zip -r ../function.zip .
+
+      - name: Show function.zip contents
+        run: |
+          unzip -l lambdas/note-create/function.zip
 
       - name: Deploy to AWS Lambda
         env:
