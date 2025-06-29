@@ -30,10 +30,11 @@ jobs:
       - name: Build note-create Lambda
         run: npm run build:note-create
 
-      - name: Copy mongodb module (external dep) from root to dist
+      - name: Install external production dependencies into dist
         run: |
-          mkdir -p lambdas/note-create/dist/node_modules
-          cp -r node_modules/mongodb lambdas/note-create/dist/node_modules/
+          cd lambdas/note-create/dist
+          npm init -y
+          npm install mongodb --omit=dev
 
       - name: Zip Lambda bundle
         run: |
