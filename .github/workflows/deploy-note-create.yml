@@ -32,6 +32,14 @@ jobs:
           npm init -y
           npm install mongodb --omit=dev
 
+      - name: List dist contents
+        run: |
+          cd lambdas/note-create/dist
+          ls -l
+          ls -l node_modules
+          ls -l node_modules/mongodb || echo "NO MONGODB"
+
+
       - name: Zip Lambda bundle
         run: |
           cd lambdas/note-create/dist
