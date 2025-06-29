@@ -1,0 +1,43 @@
+name: Deploy Note Create Lambda
+
+on:
+  push:
+    paths:
+      - 'lambdas/note-create/**'
+      - 'shared/**'
+      - '.github/workflows/deploy-note-create.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Clean install dependencies
+        run: |
+          cd lambdas/note-create
+          rm -rf node_modules package-lock.json
+          npm install --omit=dev
+
+      - name: Zip for Lambda
+        run: |
+          cd lambdas/note-create
+          zip -r function.zip . -x "node_modules/aws-sdk/**" "test*" "*.test.js" "*.md" ".env"
+
+      - name: Deploy to AWS Lambda
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+        run: |
+          aws lambda update-function-code \
+            --function-name note-create \
+            --zip-file fileb://lambdas/note-create/function.zip \
+            --region $AWS_REGION
+

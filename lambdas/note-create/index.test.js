@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler } from './index.js';
 import { mockNoteSightreading } from '../../mocks/notes';
-import { MISSING_SCHEMA_VALUES } from '../../shared/constants.js';
+import { MISSING_SCHEMA_VALUES, MONGO_CREATE_ERROR } from '../../shared/constants.js';
 
 const insertOneMock = vi.fn();
 
@@ -18,15 +18,26 @@ vi.mock('../../shared/mongo-client.js', () => ({
 describe('note-create Lambda', () => {
   let mockNote;
 
-  // describe("Create: Insert Collection", () => {
+  describe("Create: Insert Collection", () => {
+    beforeEach(() => {
+      insertOneMock.mockClear();
+    })
 
-  //   it("calls insertOne when a full note is in the body", () => {
-  //     await handler({ body: JSON.})
-  //   })
+    it("calls insertOne when a full note is in the body", async () => {
+      await handler({ body: mockNoteSightreading });
+      expect(insertOneMock).toHaveBeenCalled()
+      expect(insertOneMock.mock.calls[0][0]).toBe(mockNoteSightreading)
+    });
 
-
-
-  // });
+    it("It throws a 500 error on Mongo error", async () => {
+      insertOneMock.mockImplementationOnce(() => {
+        throw new Error(MONGO_CREATE_ERROR)
+      })
+      const res = await handler({ body: mockNoteSightreading });
+      expect(res.statusCode).toBe(500)
+      expect(res.body).toBe(JSON.stringify({ error: MONGO_CREATE_ERROR }))
+    });
+  });
 
   describe("Validation", () => {
 
