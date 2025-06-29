@@ -1,0 +1,32 @@
+name: Deploy Note Create Lambda
+
+on:
+  push:
+    paths:
+      - 'lambdas/rep-create/**'
+      - 'shared/**'
+      - '.github/workflows/deploy-rep-create.yml'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+      - run: npm install --omit=dev
+      - run: npm run build:note-create
+      - run: |
+          cd lambdas/rep-create/dist
+          zip -r ../function.zip .
+      - run: unzip -l lambdas/note-create/function.zip
+      - env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+        run: |
+          aws lambda update-function-code \
+            --function-name rep-create \
+            --zip-file fileb://lambdas/rep-create/function.zip \
+            --region $AWS_REGION
+
