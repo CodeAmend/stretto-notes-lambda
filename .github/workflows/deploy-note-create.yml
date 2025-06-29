@@ -6,6 +6,7 @@ on:
       - 'lambdas/note-create/**'
       - 'shared/**'
       - '.github/workflows/deploy-note-create.yml'
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -18,13 +19,18 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install prod dependencies (in root)
+      - name: Install dependencies at root
         run: |
           rm -rf node_modules package-lock.json
           npm install --omit=dev
 
-      - name: Build note-create Lambda
+      - name: Build note-create Lambda with esbuild
         run: npm run build:note-create
+
+      - name: Check that dist exists and show contents
+        run: |
+          ls -al lambdas/note-create
+          ls -al lambdas/note-create/dist || (echo "DIST MISSING" && exit 1)
 
       - name: Install mongodb (external) into dist
         run: |
@@ -32,13 +38,15 @@ jobs:
           npm init -y
           npm install mongodb --omit=dev
 
-      - name: List dist contents
+      - name: Show final dist structure (including node_modules)
         run: |
           cd lambdas/note-create/dist
-          ls -l
-          ls -l node_modules
-          ls -l node_modules/mongodb || echo "NO MONGODB"
-
+          echo "=== DIST DIR ==="
+          ls -al
+          echo "=== NODE_MODULES DIR ==="
+          ls -al node_modules
+          echo "=== MONGODB DIR ==="
+          ls -al node_modules/mongodb
 
       - name: Zip Lambda bundle
         run: |
