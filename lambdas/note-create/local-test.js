@@ -20,6 +20,6 @@ import { handler } from './index.js';
     console.log("Handler response:", result);
   } catch (err) {
     console.error("Handler error:", err);
-  }
+  } 
 })();
 

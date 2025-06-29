@@ -39,4 +39,9 @@ export async function handler(event) {
 
   }
 
+  return {
+    statusCode: 201, // Or 200 if you prefer
+    body: JSON.stringify({ ok: true })
+  };
+
 }

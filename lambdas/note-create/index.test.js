@@ -46,6 +46,14 @@ describe('note-create Lambda', () => {
       expect(res.statusCode).toBe(500)
       expect(res.body).toBe(JSON.stringify({ error: MONGO_CREATE_ERROR }))
     });
+
+    it("returns 201 when resource is created", async () => {
+      insertOneMock.mockImplementationOnce()
+      const res = await handler({ body: mockNoteSightreading });
+      expect(res.statusCode).toBe(201)
+      expect(res.body).toBe(JSON.stringify({ ok: true }))
+    });
+
   });
 
   describe("Validation", () => {

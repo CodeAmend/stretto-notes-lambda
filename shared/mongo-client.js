@@ -5,7 +5,6 @@ const MONGODB_URI = process.env.MONGODB_URI;
 let cachedClient = null;
 
 export async function getMongoClient() {
-  console.log(99)
   if (cachedClient) {
     console.log('[Mongo] Reusing cached client');
     return cachedClient;
