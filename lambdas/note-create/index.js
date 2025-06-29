@@ -1,12 +1,16 @@
 import { getMongoClient } from '../../shared/mongo-client.js';
-import { returnResponse } from '../../shared/helpers.js';
-import { DB_NAME, NOTE_COLLECTION_NAME, MONGO_CLIENT_ERROR, MONGO_CREATE_ERROR, MISSING_SCHEMA_VALUES } from '../../shared/constants.js';
+import { returnResponse, validateNoteBody } from '../../shared/helpers.js';
+import { DB_NAME, NOTE_COLLECTION_NAME, MONGO_CLIENT_ERROR, MONGO_CREATE_ERROR } from '../../shared/constants.js';
 
 
 export async function handler(event) {
 
   const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
 
+  const validationError = validateNoteBody(body);
+  if (validationError) {
+    return returnResponse(400, validationError)
+  }
 
   let client;
   try {
@@ -18,17 +22,6 @@ export async function handler(event) {
   const collection = db.collection(NOTE_COLLECTION_NAME)
 
 
-  if (!body.rep_id
-    || !body.note_id
-    || !body.time
-    || !body.date
-    || !body.duration_minutes
-    || !body.entries ||
-    // Must have at least one entry.
-    !(Array.isArray(body.entries) & body.entries.length > 0)
-) {
-    return returnResponse(400, MISSING_SCHEMA_VALUES)
-  }
 
   try {
     await collection.insertOne(body);
