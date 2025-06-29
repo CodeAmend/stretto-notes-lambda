@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler } from './index.js';
 import { mockNoteSightreading } from '../../mocks/notes';
-import { MISSING_SCHEMA_VALUES, MONGO_CREATE_ERROR } from '../../shared/constants.js';
+import { MISSING_SCHEMA_VALUES, MONGO_CLIENT_ERROR, MONGO_CREATE_ERROR } from '../../shared/constants.js';
+import * as mongoClient from '../../shared/mongo-client.js';
 
 const insertOneMock = vi.fn();
 
@@ -17,6 +18,14 @@ vi.mock('../../shared/mongo-client.js', () => ({
 
 describe('note-create Lambda', () => {
   let mockNote;
+
+  it("returns 500 & error if Mongo connection fails", async () => {
+    mongoClient.getMongoClient.mockImplementationOnce(() => {
+      throw new Error(MONGO_CLIENT_ERROR);
+    })
+    const res = await handler({ body: mockNoteSightreading });
+    expect(res.statusCode).toBe(500)
+  })
 
   describe("Create: Insert Collection", () => {
     beforeEach(() => {
