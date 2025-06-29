@@ -1,6 +1,5 @@
-import { MISSING_SCHEMA_VALUES, MONGO_CLIENT_ERROR, MONGO_CREATE_ERROR } from '../../shared/constants.js';
 import { getMongoClient } from '../../shared/mongo-client.js';
-import { DB_NAME, NOTE_COLLECTION_NAME } from '../../shared/constants.js';
+import { DB_NAME, NOTE_COLLECTION_NAME, MONGO_CLIENT_ERROR, MONGO_CREATE_ERROR } from '../../shared/constants.js';
 
 
 export async function handler(event) {
@@ -10,7 +9,7 @@ export async function handler(event) {
 
   let client;
   try {
-    client = getMongoClient();
+    client = await getMongoClient();
   } catch {
     return {
       statusCode: 500,
