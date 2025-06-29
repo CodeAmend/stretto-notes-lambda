@@ -1,5 +1,5 @@
 import { getMongoClient } from '../../shared/mongo-client.js';
-import { DB_NAME, NOTE_COLLECTION_NAME, MONGO_CLIENT_ERROR, MONGO_CREATE_ERROR } from '../../shared/constants.js';
+import { DB_NAME, NOTE_COLLECTION_NAME, MONGO_CLIENT_ERROR, MONGO_CREATE_ERROR, MISSING_SCHEMA_VALUES } from '../../shared/constants.js';
 
 
 export async function handler(event) {
