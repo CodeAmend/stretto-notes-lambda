@@ -72,42 +72,42 @@ describe('note-create Lambda', () => {
 
     it('returns 400 if rep_id is missing', async () => {
       delete mockNote.rep_id;
-      expectFunc(mockNote);
+      await expectFunc(mockNote);
     })
 
     it('returns 400 if note_id is missing', async () => {
       delete mockNote.note_id;
-      expectFunc(mockNote);
+      await expectFunc(mockNote);
     })
 
     it('returns 400 if time is missing', async () => {
       delete mockNote.time;
-      expectFunc(mockNote);
+      await expectFunc(mockNote);
     })
 
     it('returns 400 if time is missing', async () => {
       delete mockNote.date;
-      expectFunc(mockNote);
+      await expectFunc(mockNote);
     })
 
     it('returns 400 if duration_minutes is missing', async () => {
       delete mockNote.duration_minutes;
-      expectFunc(mockNote);
+      await expectFunc(mockNote);
     })
 
     it('returns 400 if entries is missing', async () => {
       delete mockNote.entries;
-      expectFunc(mockNote);
+      await expectFunc(mockNote);
     })
 
     it('returns 400 if entries does not have', async () => {
       delete mockNote.entries;
-      expectFunc(mockNote);
+      await expectFunc(mockNote);
     })
 
     it('returns 400 if entries does not have', async () => {
       mockNote.entries = [];
-      expectFunc(mockNote);
+      await expectFunc(mockNote);
     })
   })
 });
