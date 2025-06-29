@@ -1,20 +1,22 @@
-// Mongo names
-export const DB_NAME = 'stretto_notes_gpt';
-export const REP_COLLECTION_NAME = 'repertoire';
+// MongoDB Configuration
+export const DB_NAME = 'generic_database';
+export const COLLECTION_NAME = 'generic_collection';
 export const NOTE_COLLECTION_NAME = 'notes';
+export const REP_COLLECTION_NAME = 'reps';
 
 // Mongo Errors
 export const MONGO_CLIENT_ERROR = "Mongo failed at client creation.";
-export const MONGO_CREATE_ERROR = "Mongo failed creating note.";
+export const MONGO_CREATE_ERROR = "Mongo failed to create resource.";
 
-// Per-field validation errors:
+// Note validation errors (for note lambda)
 export const ERROR_MISSING_REP_ID = "Missing rep_id.";
-export const ERROR_MISSING_NOTE_ID = "Missing note_id.";
-export const ERROR_MISSING_TIME = "Missing time.";
-export const ERROR_MISSING_DATE = "Missing date.";
-export const ERROR_MISSING_DURATION = "Missing duration_minutes.";
-export const ERROR_ENTRIES_NOT_ARRAY = "Entries must be a non-empty array.";
+export const ERROR_MISSING_TITLE = "Missing title.";
+export const ERROR_MISSING_NOTE_TYPE = "Missing note_type.";
+export const ERROR_MISSING_ENTRIES = "Missing entries.";
 
-// General fallback
-export const MISSING_SCHEMA_VALUES = "Missing keys, send all required schema values!";
+// Rep validation errors (for rep lambda)
+export const ERROR_MISSING_ID = "Missing rep_id.";  // rep_id field
+export const ERROR_MISSING_TYPE = "Missing type.";  // type field (not note_type)
 
+// Generic
+export const ERROR_MISSING_REQUIRED_FIELD = "Missing required field.";

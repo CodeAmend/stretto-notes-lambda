@@ -1,4 +1,4 @@
-const mockNoteSightreading = {
+export const mockNoteSightreading = {
   note_id: "mock-1",
   rep_id: "sightreading",
   date: "2025-07-01",
@@ -13,7 +13,7 @@ const mockNoteSightreading = {
   ]
 };
 
-const mockNoteScales = {
+export const mockNoteScales = {
   note_id: "mock-2",
   rep_id: "scales",
   date: "2025-07-01",
@@ -28,7 +28,3 @@ const mockNoteScales = {
   ]
 };
 
-module.exports = {
-  mockNoteSightreading,
-  mockNoteScales
-}

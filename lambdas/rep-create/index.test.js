@@ -1,10 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler } from './index.js';
 import {
-  ERROR_MISSING_REP_ID,
+  ERROR_MISSING_ID,
   ERROR_MISSING_TITLE,
-  ERROR_MISSING_NOTE_TYPE,
-  ERROR_MISSING_ENTRIES,
+  ERROR_MISSING_TYPE,
+  ERROR_MISSING_CREATED_AT,
   MONGO_CLIENT_ERROR,
   MONGO_CREATE_ERROR
 } from '../../shared/constants.js';
@@ -26,12 +26,12 @@ describe('generic resource creation Lambda', () => {
   let mockResource;
 
   beforeEach(() => {
-    // This mock represents a generic resource that requires validation
+    // This mock represents a rep resource
     mockResource = {
       rep_id: 'resource_1',
       title: 'Generic Resource',
-      note_type: 'type_a',
-      entries: ['some entry'] 
+      type: 'type_a',
+      created_at: '2025-06-30'
     };
   });
 
@@ -55,9 +55,9 @@ describe('generic resource creation Lambda', () => {
   });
 
   describe("Validation", () => {
-    it('returns 400 if rep_id is missing', async () => {
+    it('returns 400 if id is missing', async () => {
       delete mockResource.rep_id;
-      await expectFailedValidation(mockResource, ERROR_MISSING_REP_ID);
+      await expectFailedValidation(mockResource, ERROR_MISSING_ID);
     });
 
     it('returns 400 if title is missing', async () => {
@@ -65,25 +65,11 @@ describe('generic resource creation Lambda', () => {
       await expectFailedValidation(mockResource, ERROR_MISSING_TITLE);
     });
 
-    it('returns 400 if note_type is missing', async () => {
-      delete mockResource.note_type;
-      await expectFailedValidation(mockResource, ERROR_MISSING_NOTE_TYPE);
+    it('returns 400 if type is missing', async () => {
+      delete mockResource.type;
+      await expectFailedValidation(mockResource, ERROR_MISSING_TYPE);
     });
 
-    it('returns 400 if entries is missing', async () => {
-      delete mockResource.entries;
-      await expectFailedValidation(mockResource, ERROR_MISSING_ENTRIES);
-    });
-
-    it('returns 400 if entries is not an array', async () => {
-      mockResource.entries = "not-an-array";
-      await expectFailedValidation(mockResource, ERROR_MISSING_ENTRIES);
-    });
-
-    it('returns 400 if entries is an empty array', async () => {
-      mockResource.entries = [];
-      await expectFailedValidation(mockResource, ERROR_MISSING_ENTRIES);
-    });
   });
 
   describe("Create: Insert Collection", () => {
