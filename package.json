@@ -1,0 +1,35 @@
+{
+  "name": "stretto-notes-lambda-monorepo",
+  "private": true,
+  "workspaces": [
+    "lambdas/*",
+    "shared"
+  ],
+  "scripts": {
+    "build:note-create": "npx esbuild lambdas/note-create/index.js --bundle --platform=node --target=node22 --outdir=lambdas/note-create/dist --external:mongodb"
+  },
+  "dependencies": {
+    "mongodb": "^6.17.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.0",
+    "dotenv": "^17.0.0",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": "22.17.0"
+  },
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CodeAmend/stretto-notes-lambda.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CodeAmend/stretto-notes-lambda/issues"
+  },
+  "homepage": "https://github.com/CodeAmend/stretto-notes-lambda#readme",
+  "keywords": [],
+  "author": "Michael Bruce Allen",
+  "license": "ISC"
+}
+
