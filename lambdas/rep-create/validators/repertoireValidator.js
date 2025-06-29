@@ -1,8 +1,8 @@
 import Joi from 'joi';
 
 // Enum values
-const importanceValues = ['active', 'backburner', 'reference', 'archived'];
-const statusValues = ['learning', 'polishing', 'performance_ready', 'paused'];
+const statusValues = ['learning', 'polishing', 'performance_ready'];
+const onHoldValues = ['no', 'archived', 'too_difficult', 'seasonal', 'lost_interest'];
 const memorizedValues = ['none', 'shaky', 'confident', 'solid'];
 
 // Metadata schema
@@ -28,13 +28,13 @@ const repertoireSchema = Joi.object({
   display_name: Joi.string().min(1).max(100).required(),
   
   // Enums with defaults
-  importance: Joi.string()
-    .valid(...importanceValues)
-    .default('active'),
-    
   status: Joi.string()
     .valid(...statusValues)
     .default('learning'),
+
+  on_hold: Joi.string()
+    .valid(...onHoldValues)
+    .default('no'),
     
   memorized: Joi.string()
     .valid(...memorizedValues)
@@ -87,8 +87,8 @@ export function validateRepertoire(data) {
 
 // Export for use in other validators or shared validation
 export const repertoireValidationSchemas = {
-  importanceValues,
   statusValues,
+  onHoldValues,
   memorizedValues,
   metadataSchema,
   repertoireSchema
