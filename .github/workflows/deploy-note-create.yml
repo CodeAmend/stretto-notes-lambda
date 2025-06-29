@@ -6,70 +6,21 @@ on:
       - 'lambdas/note-create/**'
       - 'shared/**'
       - '.github/workflows/deploy-note-create.yml'
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '22'
-
-      - name: Print current user and permissions
-        run: |
-          whoami
-          pwd
-          ls -al
-          ls -al lambdas || true
-          ls -al lambdas/note-create || true
-
-      - name: Install dependencies at root
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --omit=dev
-
-      - name: Build note-create Lambda with esbuild
-        run: npm run build:note-create
-
-      - name: Show contents of note-create after build
-        run: |
-          echo "Contents of lambdas/note-create after build:"
-          ls -al lambdas/note-create
-          echo "Contents of lambdas/note-create/dist after build:"
-          ls -al lambdas/note-create/dist || echo "dist directory missing!"
-
-      - name: Install mongodb (external) into dist
-        run: |
-          cd lambdas/note-create/dist
-          pwd
-          npm init -y
-          npm install mongodb --omit=dev
-
-      - name: Show final dist structure (including node_modules)
-        run: |
-          cd lambdas/note-create/dist
-          echo "=== DIST DIR ==="
-          ls -al
-          echo "=== NODE_MODULES DIR ==="
-          ls -al node_modules || echo "NO NODE_MODULES"
-          echo "=== MONGODB DIR ==="
-          ls -al node_modules/mongodb || echo "NO MONGODB"
-
-      - name: Zip Lambda bundle
-        run: |
+      - run: npm install --omit=dev
+      - run: npm run build:note-create
+      - run: |
           cd lambdas/note-create/dist
           zip -r ../function.zip .
-
-      - name: Show function.zip contents
-        run: |
-          unzip -l lambdas/note-create/function.zip
-
-      - name: Deploy to AWS Lambda
-        env:
+      - run: unzip -l lambdas/note-create/function.zip
+      - env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
