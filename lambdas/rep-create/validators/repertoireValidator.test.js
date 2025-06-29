@@ -17,9 +17,9 @@ describe('repertoireValidator', () => {
       const value = expectValid(result);
       
       // Check defaults are applied
-      expect(value.status).toBe('learning');
-      expect(value.on_hold).toBe('no');
-      expect(value.memorized).toBe('none');
+      expect(value.status).toBe('Learning');
+      expect(value.on_hold).toBe('No');
+      expect(value.memorized).toBe('None');
       expect(value.aliases).toEqual([]);
       expect(value.tags).toEqual([]);
       expect(value.metadata).toEqual({
@@ -130,10 +130,10 @@ describe('repertoireValidator', () => {
 
   describe('status validation', () => {
     const statusTests = [
-      { status: 'learning', valid: true },
-      { status: 'polishing', valid: true },
-      { status: 'performance_ready', valid: true },
-      { status: 'not_started', valid: false },
+      { status: 'Learning', valid: true },
+      { status: 'Polishing', valid: true },
+      { status: 'Performance Ready', valid: true },
+      { status: 'Ready For Exam', valid: false },
       { status: 'paused', valid: false },
       { status: 'memorizing', valid: false },
       { status: 'completed', valid: false },
@@ -156,11 +156,11 @@ describe('repertoireValidator', () => {
 
   describe('on_hold validation', () => {
     const onHoldTests = [
-      { on_hold: 'no', valid: true },
-      { on_hold: 'archived', valid: true },
-      { on_hold: 'too_difficult', valid: true },
-      { on_hold: 'seasonal', valid: true },
-      { on_hold: 'lost_interest', valid: true },
+      { on_hold: 'No', valid: true },
+      { on_hold: 'Archived', valid: true },
+      { on_hold: 'Too Difficult', valid: true },
+      { on_hold: 'Seasonal', valid: true },
+      { on_hold: 'Lost Interest', valid: true },
       { on_hold: 'none', valid: false },
       { on_hold: 'yes', valid: false },
       { on_hold: 'paused', valid: false },
@@ -184,10 +184,10 @@ describe('repertoireValidator', () => {
 
   describe('memorized validation', () => {
     const memorizedTests = [
-      { memorized: 'none', valid: true },
-      { memorized: 'shaky', valid: true },
-      { memorized: 'confident', valid: true },
-      { memorized: 'solid', valid: true },
+      { memorized: 'None', valid: true },
+      { memorized: 'Shaky', valid: true },
+      { memorized: 'Confident', valid: true },
+      { memorized: 'Solid', valid: true },
       { memorized: 'partial', valid: false },
       { memorized: 'yes', valid: false },
       { memorized: true, valid: false }
@@ -414,8 +414,8 @@ describe('repertoireValidator', () => {
           rep_id: 'bach_invention_13',
           name: 'Invention No. 13 in A minor, BWV 784',
           display_name: 'Bach Invention No. 13',
-          status: 'performance_ready',
-          on_hold: 'no',
+          status: 'Performance Ready',
+          on_hold: 'No',
           metadata: {
             composer: 'J.S. Bach',
             opus_info: 'BWV 784',
@@ -429,8 +429,8 @@ describe('repertoireValidator', () => {
           name: 'Étude Op. 10, No. 3 in E major',
           display_name: 'Chopin Étude Op. 10 No. 3 "Tristesse"',
           aliases: ['Tristesse', 'Etude in E major'],
-          status: 'polishing',
-          on_hold: 'too_difficult',
+          status: 'Polishing',
+          on_hold: 'Too Difficult',
           metadata: {
             composer: 'Frédéric Chopin',
             opus_info: 'Op. 10 No. 3',
@@ -444,9 +444,9 @@ describe('repertoireValidator', () => {
           rep_id: 'debussy_clair_de_lune',
           name: 'Suite bergamasque, L. 75: III. Clair de lune',
           display_name: 'Clair de Lune',
-          status: 'performance_ready',
-          on_hold: 'archived',
-          memorized: 'solid',
+          status: 'Performance Ready',
+          on_hold: 'Archived',
+          memorized: 'Solid',
           metadata: {
             composer: 'Claude Debussy',
             opus_info: 'L. 75',
@@ -460,9 +460,9 @@ describe('repertoireValidator', () => {
           rep_id: 'christmas_carol_medley',
           name: 'Christmas Carol Medley Arrangement',
           display_name: 'Christmas Medley',
-          status: 'performance_ready',
-          on_hold: 'seasonal',
-          memorized: 'confident',
+          status: 'Performance Ready',
+          on_hold: 'Seasonal',
+          memorized: 'Confident',
           tags: ['christmas', 'arrangement', 'seasonal']
         }
       ];
@@ -477,33 +477,33 @@ describe('repertoireValidator', () => {
     it('validates common use cases', () => {
       // Piece you're actively learning
       const activeLearning = createValidRepertoire({
-        status: 'learning',
-        on_hold: 'no',
-        memorized: 'shaky'
+        status: 'Learning',
+        on_hold: 'No',
+        memorized: 'Shaky'
       });
       expectValid(validateRepertoire(activeLearning));
 
       // Piece that's ready but only played at Christmas
       const christmasPiece = createValidRepertoire({
-        status: 'performance_ready',
-        on_hold: 'seasonal',
-        memorized: 'solid'
+        status: 'Performance Ready',
+        on_hold: 'Seasonal',
+        memorized: 'Solid'
       });
       expectValid(validateRepertoire(christmasPiece));
 
       // Piece you started but found too hard
       const tooHard = createValidRepertoire({
-        status: 'learning',
-        on_hold: 'too_difficult',
-        memorized: 'none'
+        status: 'Learning',
+        on_hold: 'Too Difficult',
+        memorized: 'None'
       });
       expectValid(validateRepertoire(tooHard));
 
       // Piece you mastered but don't play anymore
       const archived = createValidRepertoire({
-        status: 'performance_ready',
-        on_hold: 'archived',
-        memorized: 'solid'
+        status: 'Performance Ready',
+        on_hold: 'Archived',
+        memorized: 'Solid'
       });
       expectValid(validateRepertoire(archived));
     });

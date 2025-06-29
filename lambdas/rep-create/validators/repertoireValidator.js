@@ -1,9 +1,9 @@
 import Joi from 'joi';
 
 // Enum values
-const statusValues = ['learning', 'polishing', 'performance_ready'];
-const onHoldValues = ['no', 'archived', 'too_difficult', 'seasonal', 'lost_interest'];
-const memorizedValues = ['none', 'shaky', 'confident', 'solid'];
+const statusValues = ['Learning', 'Polishing', 'Performance Ready'];
+const onHoldValues = ['No', 'Archived', 'Too Difficult', 'Seasonal', 'Lost Interest'];
+const memorizedValues = ['None', 'Shaky', 'Confident', 'Solid'];
 
 // Metadata schema
 const metadataSchema = Joi.object({
@@ -30,15 +30,15 @@ const repertoireSchema = Joi.object({
   // Enums with defaults
   status: Joi.string()
     .valid(...statusValues)
-    .default('learning'),
+    .default('Learning'),
 
   on_hold: Joi.string()
     .valid(...onHoldValues)
-    .default('no'),
+    .default('No'),
     
   memorized: Joi.string()
     .valid(...memorizedValues)
-    .default('none'),
+    .default('None'),
   
   // Complex fields
   metadata: metadataSchema,

@@ -1,11 +1,11 @@
 export function createValidRepertoire(overrides = {}) {
   return {
     rep_id: 'chopin_waltz_op18',
-    name: 'Waltz in E-flat major, Op. 18',
+    name: 'Grande Valse Brillante in E-flat major, Op. 18',
     display_name: 'Chopin Waltz Op. 18',
-    importance: 'active',
-    status: 'learning',
-    memorized: 'none',
+    status: 'Learning',
+    on_hold: 'No',
+    memorized: 'None',
     metadata: {
       composer: 'Chopin',
       opus_info: 'Op. 18',
@@ -14,9 +14,10 @@ export function createValidRepertoire(overrides = {}) {
       difficulty: 'intermediate-advanced'
     },
     aliases: [],
-    target_date: null,
-    started_date: '2024-01-01T00:00:00Z',
     tags: [],
+    started_date: new Date().toISOString(),
+    target_date: null,
+    // Remove any importance field
     ...overrides
   };
 }
