@@ -4,7 +4,8 @@
   "main": "index.mjs",
   "scripts": {
     "test": "vitest",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "build": "npx esbuild index.js --bundle --platform=node --target=node22 --outdir=dist --external:mongodb"
   },
   "repository": {
     "type": "git",
